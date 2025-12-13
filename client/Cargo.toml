@@ -9,3 +9,9 @@ tokio-rustls = { version = "0.26.4" }
 rustls-pemfile = { version = "2.2.0" }
 rustls ={ version = "0.23.35" }
 rustls-pki-types ={ version = "1.13"}
+anyhow = { version = "1.0.74" }
+serde_json = { version = "1.0.117" }
+serde = { version = "1.0.152", features = ["derive"] }
+shared = { path = "../shared" }
+iced = { version = "0.12", features = ["debug"] }
+chrono = { version = "0.4.42", features = ["serde"] }
