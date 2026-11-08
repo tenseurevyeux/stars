@@ -13,8 +13,8 @@ pub mod student;
 pub mod summary;
 
 const CERT_BYTES: &[u8] = include_bytes!("../../../certificates/rootCA.pem");
-const SERVER_ADDR: &str = "217.60.2.146:7777";
-const SERVER_NAME: &str = "217.60.2.146";
+const DEFAULT_SERVER_ADDR: &str = "127.0.0.1:7777";
+const DEFAULT_SERVER_NAME: &str = "127.0.0.1";
 
 pub fn send_request(req: Request) -> anyhow::Result<serde_json::Value> {
     let mut root_store = rustls::RootCertStore::empty();
@@ -30,12 +30,17 @@ pub fn send_request(req: Request) -> anyhow::Result<serde_json::Value> {
         .with_root_certificates(root_store)
         .with_no_client_auth();
 
-    let server_name: ServerName =
-        ServerName::try_from(SERVER_NAME).map_err(|_| anyhow::anyhow!("Invalid server name"))?;
+    let server_addr = std::env::var("SERVER_ADDR").unwrap_or_else(|_| DEFAULT_SERVER_ADDR.to_string());
+    let server_name_val = std::env::var("SERVER_NAME").unwrap_or_else(|_| DEFAULT_SERVER_NAME.to_string());
+
+    let server_name: ServerName<'static> =
+        ServerName::try_from(server_name_val.as_str())
+            .map_err(|_| anyhow::anyhow!("Invalid server name"))?
+            .to_owned();
 
     let conn = rustls::ClientConnection::new(Arc::new(config), server_name)?;
-    let tcp = std::net::TcpStream::connect(SERVER_ADDR)
-        .map_err(|e| anyhow::anyhow!("Failed to connect: {}", e))?;
+    let tcp = std::net::TcpStream::connect(&server_addr)
+        .map_err(|e| anyhow::anyhow!("Failed to connect to {}: {}", server_addr, e))?;
 
     let mut tls = rustls::StreamOwned::new(conn, tcp);
 

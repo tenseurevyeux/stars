@@ -22,13 +22,17 @@ use handlers::student::handle_student;
 use handlers::summary::handle_summary;
 
 fn load_tls_config() -> anyhow::Result<ServerConfig> {
-    let cert_file = File::open("./sec/server.crt")?;
+    let cert_path = env::var("TLS_CERT_PATH").unwrap_or_else(|_| "./sec/server.crt".to_string());
+    let cert_file = File::open(&cert_path)
+        .with_context(|| format!("Failed to open TLS certificate file at '{}'", cert_path))?;
     let mut cert_reader = BufReader::new(cert_file);
 
     let certs: Vec<CertificateDer> =
         rustls_pemfile::certs(&mut cert_reader).collect::<Result<Vec<_>, _>>()?;
 
-    let key_file = File::open("./sec/server.key")?;
+    let key_path = env::var("TLS_KEY_PATH").unwrap_or_else(|_| "./sec/server.key".to_string());
+    let key_file = File::open(&key_path)
+        .with_context(|| format!("Failed to open TLS private key file at '{}'", key_path))?;
     let mut key_reader = BufReader::new(key_file);
 
     let key: PrivateKeyDer =
@@ -89,8 +93,11 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     let acceptor = TlsAcceptor::from(Arc::new(config));
-    let listener = TcpListener::bind("0.0.0.0:7777").await?;
-    println!("Secure Server started...");
+    let host = env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port = env::var("SERVER_PORT").unwrap_or_else(|_| "7777".to_string());
+    let bind_addr = format!("{}:{}", host, port);
+    let listener = TcpListener::bind(&bind_addr).await?;
+    println!("Secure Server started on {}...", bind_addr);
 
     loop {
         let (stream, addr) = listener.accept().await?;
